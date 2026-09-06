@@ -72,3 +72,25 @@ def create_overview_metrics(df: pd.DataFrame) -> pd.DataFrame:
             ]
         }
     )
+
+def aggregate_sales_by_dimension(df: pd.DataFrame, group_by_col: str) -> pd.DataFrame:
+    """Aggregerar försäljning, unika ordrar och returgrad per vald kolumn."""
+    summary = (
+        df.groupby(group_by_col, as_index=False)
+        .agg(
+            order_count=("order_id", "nunique"),
+            total_sales=("discounted_value", "sum"),
+            returns=("returned", "sum")
+        )
+    )
+
+    summary["total_sales"] = summary["total_sales"].round(2)
+    summary["return_rate"] = (summary["returns"] / summary["order_count"]).round(3)
+
+    return summary.sort_values("total_sales", ascending=False).reset_index(drop=True)
+
+def aggregate_sales_by_category(df: pd.DataFrame) -> pd.DataFrame:
+    return aggregate_sales_by_dimension(df, group_by_col="product_category")
+
+def aggregate_sales_by_region(df: pd.DataFrame) -> pd.DataFrame:
+    return aggregate_sales_by_dimension(df, group_by_col="region")
