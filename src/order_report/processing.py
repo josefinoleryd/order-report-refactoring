@@ -51,3 +51,24 @@ def calculate_order_values(df: pd.DataFrame) -> pd.DataFrame:
     processed["discounted_value"] = processed["order_value"] * (1 - processed["discount"])
 
     return processed
+
+def create_overview_metrics(df: pd.DataFrame) -> pd.DataFrame:
+    """Sammanställer övergripande nyckeltal för hela datasetet."""
+    total_sales = round(df["discounted_value"].sum(), 2)
+    number_of_orders = df["order_id"].nunique()
+    number_of_returns = int(df["returned"].sum())
+
+    return pd.DataFrame(
+        {
+            "metric": [
+                "total_sales",
+                "order_count",
+                "return_count"
+            ],
+            "value": [
+                total_sales,
+                number_of_orders,
+                number_of_returns
+            ]
+        }
+    )
