@@ -1,4 +1,5 @@
 import pandas as pd
+from pandas.testing import assert_frame_equal
 import pytest
 from order_report.processing import (
     clean_order_data, 
@@ -9,19 +10,24 @@ from order_report.processing import (
     aggregate_returns_by_category
 )
 
-def test_clean_order_data_cleans_and_imputes_correctly():
-    raw_data = pd.DataFrame(
+
+@pytest.fixture
+def raw_order_data():
+    """Gemensam rådata för test av rengöring och imputering."""
+    return pd.DataFrame(
         {
             "region": [" north ", None],
             "product_category": ["books", "TOYS "],
             "quantity": ["2", None],
             "unit_price": [10.0, None],
             "discount": [0.1, None],
-            "returned": ["Ja", "no"]
+            "returned": ["Ja", "no"],
         }
     )
 
-    result = clean_order_data(raw_data)
+
+def test_clean_order_data_cleans_and_imputes_correctly(raw_order_data):
+    result = clean_order_data(raw_order_data)
 
     # Kontrollera textformatering
     assert result.loc[0, "region"] == "North"
@@ -37,22 +43,44 @@ def test_clean_order_data_cleans_and_imputes_correctly():
     assert bool(result.loc[0, "returned"]) is True
     assert bool(result.loc[1, "returned"]) is False
 
-def test_calculate_order_values():
-    sample_data = pd.DataFrame(
+
+def test_clean_order_data_does_not_modify_input(raw_order_data):
+    original_input = raw_order_data.copy(deep=True)
+
+    clean_order_data(raw_order_data)
+
+    assert_frame_equal(raw_order_data, original_input)
+
+
+@pytest.fixture
+def uncalculated_order_data():
+    """Gemensam data för beräkning av ordervärden."""
+    return pd.DataFrame(
         {
             "quantity": [2, 1],
             "unit_price": [100.0, 50.0],
-            "discount": [0.1, 0.0]
+            "discount": [0.1, 0.0],
         }
     )
 
-    result = calculate_order_values(sample_data)
+
+def test_calculate_order_values(uncalculated_order_data):
+    result = calculate_order_values(uncalculated_order_data)
 
     assert result.loc[0, "order_value"] == pytest.approx(200.0)
     assert result.loc[0, "discounted_value"] == pytest.approx(180.0)
 
     assert result.loc[1, "order_value"] == pytest.approx(50.0)
     assert result.loc[1, "discounted_value"] == pytest.approx(50.0)
+
+
+def test_calculate_order_value_does_not_modify_input(uncalculated_order_data):
+    original_input = uncalculated_order_data.copy(deep=True)
+
+    calculate_order_values(uncalculated_order_data)
+
+    assert_frame_equal(uncalculated_order_data, original_input)
+
 
 def test_create_overview_metrics():
     sample_data = pd.DataFrame(
@@ -71,6 +99,7 @@ def test_create_overview_metrics():
     assert metrics["total_sales"] == pytest.approx(200.00)
     assert metrics["order_count"] == 2
     assert metrics["return_count"] == 2
+
 
 @pytest.fixture
 def sales_sample_data():
