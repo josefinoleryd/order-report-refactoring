@@ -43,3 +43,11 @@ def clean_order_data(df: pd.DataFrame) -> pd.DataFrame:
     )
 
     return cleaned
+
+def calculate_order_values(df: pd.DataFrame) -> pd.DataFrame:
+    """Beräknar order_value och discounted_value för varje rad."""
+    processed = df.copy()
+    processed["order_value"] = processed["quantity"] * processed["unit_price"]
+    processed["discounted_value"] = processed["order_value"] * (1 - processed["discount"])
+
+    return processed

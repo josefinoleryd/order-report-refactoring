@@ -1,5 +1,5 @@
 import pandas as pd
-from order_report.processing import clean_order_data
+from order_report.processing import clean_order_data, calculate_order_values
 
 def test_clean_order_data_cleans_and_imputes_correctly():
     raw_data = pd.DataFrame(
@@ -28,3 +28,20 @@ def test_clean_order_data_cleans_and_imputes_correctly():
     # Kontrollera boolesk flagga
     assert result.loc[0, "returned"] is True or result.loc[0, "returned"] == True
     assert result.loc[1, "returned"] is False or result.loc[1, "returned"] == False
+
+def test_calculate_order_values():
+    sample_data = pd.DataFrame(
+        {
+            "quantity": [2, 1],
+            "unit_price": [100.0, 50.0],
+            "discount": [0.1, 0.0]
+        }
+    )
+
+    result = calculate_order_values(sample_data)
+
+    assert result.loc[0, "order_value"] == 200.0
+    assert result.loc[0, "discounted_value"] == 180.0
+
+    assert result.loc[1, "order_value"] == 50.0
+    assert result.loc[1, "discounted_value"] == 50.0
