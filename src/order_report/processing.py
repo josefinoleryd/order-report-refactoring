@@ -94,3 +94,17 @@ def aggregate_sales_by_category(df: pd.DataFrame) -> pd.DataFrame:
 
 def aggregate_sales_by_region(df: pd.DataFrame) -> pd.DataFrame:
     return aggregate_sales_by_dimension(df, group_by_col="region")
+
+def aggregate_returns_by_category(df: pd.DataFrame) -> pd.DataFrame:
+    """Aggregerar antal ordrar, returer och returgrad per produktkategori."""
+    summary = (
+        df.groupby("product_category", as_index=False)
+        .agg(
+            order_count=("order_id", "nunique"),
+            returns=("returned", "sum")
+        )
+    )
+
+    summary["return_rate"] = (summary["returns"] / summary["order_count"]).round(3)
+
+    return summary.sort_values("return_rate", ascending=False).reset_index(drop=True)

@@ -5,7 +5,8 @@ from order_report.processing import (
     calculate_order_values,
     create_overview_metrics,
     aggregate_sales_by_category,
-    aggregate_sales_by_region
+    aggregate_sales_by_region,
+    aggregate_returns_by_category
 )
 
 def test_clean_order_data_cleans_and_imputes_correctly():
@@ -113,3 +114,23 @@ def test_aggregate_sales_by_region(sales_sample_data):
     assert result.loc[1, "total_sales"] == pytest.approx(100.0)
     assert result.loc[1, "returns"] == 1
     assert result.loc[1, "return_rate"] == pytest.approx(1.0)
+
+def test_aggregate_returns_by_category(sales_sample_data):
+    result = aggregate_returns_by_category(sales_sample_data)
+
+    assert list(result.columns) == [
+        "product_category",
+        "order_count",
+        "returns",
+        "return_rate"
+    ]
+
+    assert result.loc[0, "product_category"] == "Books"
+    assert result.loc[0, "order_count"] == 1
+    assert result.loc[0, "returns"] == 1
+    assert result.loc[0, "return_rate"] == pytest.approx(1.0)
+
+    assert result.loc[1, "product_category"] == "Toys"
+    assert result.loc[1, "order_count"] == 1
+    assert result.loc[1, "returns"] == 0
+    assert result.loc[1, "return_rate"] == pytest.approx(0.0)
