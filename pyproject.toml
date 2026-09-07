@@ -5,3 +5,11 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "order_report"
 version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = ["pandas>=3.0.0"]
+
+[project.optional-dependencies]
+test = ["pytest>=9.0.0"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
