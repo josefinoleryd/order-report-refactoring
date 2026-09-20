@@ -1,11 +1,19 @@
+import logging
 import pandas as pd
 
+logger = logging.getLogger(__name__)
+
+
 def clean_order_data(df: pd.DataFrame) -> pd.DataFrame:
-    """Rensar och standardiserar kolumnerna i orderdatan."""
+    """Rensar och standardiserar kolumnerna i orderdatan samt rapporterar avvikelser."""
     cleaned = df.copy()
 
-    # Standardisera textkolumner
+    # 1. Kontrollera och standardisera textkolumner
     for col in ["region", "product_category"]:
+        missing_text = cleaned[col].isna().sum()
+        if missing_text > 0:
+            logger.warning("Upptäckte %d saknade värden i '%s'. Ersätts med 'Unknown'.", missing_text, col)
+
         cleaned[col] = (
             cleaned[col]
             .fillna("Unknown")
@@ -14,24 +22,50 @@ def clean_order_data(df: pd.DataFrame) -> pd.DataFrame:
             .str.title()
         )
 
-    # Konvertera numeriska kolumner och hantera saknade värden
-    cleaned["quantity"] = (
-        pd.to_numeric(cleaned["quantity"], errors="coerce")
-        .fillna(1)
-    )
-
-    cleaned["unit_price"] = pd.to_numeric(
-        cleaned["unit_price"], errors="coerce"
-    )
-    median_price = cleaned["unit_price"].median()
-    cleaned["unit_price"] = cleaned["unit_price"].fillna(median_price)
-
-    cleaned["discount"] = (
-        pd.to_numeric(cleaned["discount"], errors="coerce")
-        .fillna(0.0)
-    )
-
-    # Tolka returstatus som booleskt värde
+    # 2. Konvertera och rapportera numeriska kolumner
+    # Quantity
+    raw_quantity = pd.to_numeric(cleaned["quantity"], errors="coerce")
+    missing_qty = raw_quantity.isna().sum()
+    if missing_qty > 0:
+        logger.warning("Upptäckte %d ogiltiga eller saknade värden i 'quantity'. Ersätts med 1.", missing_qty)
+    
+    negative_qty = (raw_quantity < 0).sum()
+    if negative_qty > 0:
+        logger.warning("Upptäckte %d rader med orimligt/negativt värde i 'quantity'.", negative_qty)
+    
+    cleaned["quantity"] = raw_quantity.fillna(1)
+    
+    # Unit price
+    raw_price = pd.to_numeric(cleaned["unit_price"], errors="coerce")
+    missing_price = raw_price.isna().sum()
+    median_price = raw_price.median()
+    
+    if missing_price > 0:
+        logger.warning(
+            "Upptäckte %d ogiltiga eller saknade värden i 'unit_price'. Ersätts med median (%.2f).",
+            missing_price,
+            median_price,
+        )
+    
+    negative_price = (raw_price < 0).sum()
+    if negative_price > 0:
+        logger.warning("Upptäckte %d rader med orimligt/negativt värde i 'unit_price'.", negative_price)
+    
+    cleaned["unit_price"] = raw_price.fillna(median_price)
+    
+    # Discount
+    raw_discount = pd.to_numeric(cleaned["discount"], errors="coerce")
+    missing_discount = raw_discount.isna().sum()
+    if missing_discount > 0:
+        logger.warning("Upptäckte %d ogiltiga eller saknade värden i 'discount'. Ersätts med 0.0.", missing_discount)
+    
+    invalid_discount_range = ((raw_discount < 0) | (raw_discount > 1)).sum()
+    if invalid_discount_range > 0:
+        logger.warning("Upptäckte %d rader med orimlig rabattsats (utanför intervallet 0.0 till 1.0).", invalid_discount_range)
+    
+    cleaned["discount"] = raw_discount.fillna(0.0)
+    
+    # 3. Tolka returstatus som booleskt värde
     truthy_values = {"true", "yes", "1", "ja"}
     cleaned["returned"] = (
         cleaned["returned"]
@@ -41,7 +75,7 @@ def clean_order_data(df: pd.DataFrame) -> pd.DataFrame:
         .str.lower()
         .isin(truthy_values)
     )
-
+    
     return cleaned
 
 def calculate_order_values(df: pd.DataFrame) -> pd.DataFrame:
